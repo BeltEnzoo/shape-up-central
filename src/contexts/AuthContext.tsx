@@ -46,7 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // In a real app, you'd validate credentials with your backend
     // For this demo, we'll accept any email from our mock data and any password
     try {
-      const foundUser = [...mockService.teachers, ...mockService.students]
+      // Get all users from mockService
+      const students = mockService.getStudentsByTeacherId('all');
+      const teachers = mockService.getAllTeachers ? mockService.getAllTeachers() : [];
+      
+      const foundUser = [...teachers, ...students]
         .find(u => u.email.toLowerCase() === email.toLowerCase());
       
       if (foundUser) {

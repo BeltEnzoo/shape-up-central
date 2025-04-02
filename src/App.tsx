@@ -14,31 +14,35 @@ import TeacherStudents from "./pages/TeacherStudents";
 import TeacherPayments from "./pages/TeacherPayments";
 import TeacherRoutines from "./pages/TeacherRoutines";
 import NotFound from "./pages/NotFound";
+import React from "react";
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/routine" element={<StudentRoutine />} />
-            <Route path="/progress" element={<StudentProgress />} />
-            <Route path="/students" element={<TeacherStudents />} />
-            <Route path="/payments" element={<TeacherPayments />} />
-            <Route path="/routines" element={<TeacherRoutines />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+// Create a new QueryClient instance inside the component
+function App() {
+  const queryClient = new QueryClient();
+  
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/routine" element={<StudentRoutine />} />
+              <Route path="/progress" element={<StudentProgress />} />
+              <Route path="/students" element={<TeacherStudents />} />
+              <Route path="/payments" element={<TeacherPayments />} />
+              <Route path="/routines" element={<TeacherRoutines />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;

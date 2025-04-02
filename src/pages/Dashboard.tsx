@@ -109,6 +109,9 @@ const Dashboard = () => {
     const students = mockService.getStudentsByTeacherId(teacher.id);
     const pendingPayments = students.filter(s => s.paymentStatus === 'pending');
     
+    // Get total number of routines from an appropriate method
+    const totalRoutines = mockService.getAllRoutines ? mockService.getAllRoutines().length : 0;
+    
     return (
       <div className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -144,7 +147,7 @@ const Dashboard = () => {
               <Dumbbell className="h-4 w-4 text-gym-secondary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{mockService.routines.length}</div>
+              <div className="text-2xl font-bold">{totalRoutines}</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Rutinas disponibles
               </p>
