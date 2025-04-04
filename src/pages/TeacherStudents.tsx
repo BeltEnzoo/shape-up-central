@@ -1,8 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockService, Student, Teacher, Routine } from '@/lib/mock-data';
+import { Student, Teacher, Routine } from '@/lib/mock-data';
+import { mockService } from '@/lib/mock-service';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -20,6 +20,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -33,22 +35,58 @@ import {
   User,
   MoreHorizontal,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  UserPlus,
+  Trash2,
+  Power,
+  PowerOff,
+  MoreVertical,
+  KeyRound,
+  RefreshCw
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface NewStudent {
+  name: string;
+  email: string;
+  phone: string;
+  routineId: string;
+}
+
+interface StudentFormData {
+  name: string;
+  email: string;
+  routineId: string;
+}
 
 const TeacherStudents = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [students, setStudents] = useState<Student[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<'profile' | 'routine'>('profile');
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [routines, setRoutines] = useState<Routine[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<'new' | 'profile' | 'routine'>('new');
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [newStudent, setNewStudent] = useState<NewStudent>({
+    name: '',
+    email: '',
+    phone: '',
+    routineId: ''
+  });
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   
   useEffect(() => {
     if (!user || user.role !== 'teacher') {
@@ -56,10 +94,13 @@ const TeacherStudents = () => {
       return;
     }
     
-    const teacher = user as Teacher;
-    const teacherStudents = mockService.getStudentsByTeacherId(teacher.id);
+    // Cargar estudiantes
+    const teacherStudents = mockService.getStudentsByTeacherId(user.id);
     setStudents(teacherStudents);
-    setRoutines(mockService.routines);
+
+    // Cargar rutinas del profesor
+    const teacherRoutines = mockService.getRoutinesByTeacherId(user.id);
+    setRoutines(teacherRoutines);
   }, [user, navigate]);
   
   if (!user) {
@@ -120,6 +161,130 @@ const TeacherStudents = () => {
     }
   };
   
+  const handleOpenNewStudent = () => {
+    setDialogType('new');
+    setIsDialogOpen(true);
+    setNewStudent({
+      name: '',
+      email: '',
+      phone: '',
+      routineId: routines[0]?.id || ''
+    });
+  };
+
+  const handleCreateStudent = () => {
+    if (!user || user.role !== 'teacher') return;
+
+    const studentData: Student = {
+      id: `s${Date.now()}`,
+      name: newStudent.name,
+      email: newStudent.email,
+      phone: newStudent.phone,
+      role: 'student',
+      teacherId: user.id,
+      routineId: newStudent.routineId,
+      paymentStatus: 'pending',
+      isActive: true,
+      lastPaymentDate: null,
+      ...mockService.generateCredentials(newStudent.name)
+    };
+
+    const success = mockService.addStudent(studentData);
+    if (success) {
+      setStudents(prev => [...prev, studentData]);
+      toast({
+        title: "Alumno creado",
+        description: "El alumno ha sido creado exitosamente.",
+      });
+      setIsDialogOpen(false);
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudo crear el alumno.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleRegenerateCredentials = (studentId: string) => {
+    const credentials = mockService.regenerateStudentCredentials(studentId);
+    if (credentials) {
+      toast({
+        title: "Credenciales actualizadas",
+        description: `Usuario: ${credentials.username}\nContraseña: ${credentials.password}`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudieron regenerar las credenciales.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShowCredentials = (studentId: string) => {
+    const credentials = mockService.getStudentCredentials(studentId);
+    if (credentials) {
+      toast({
+        title: "Credenciales del alumno",
+        description: `Usuario: ${credentials.username}\nContraseña: ${credentials.password}`,
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudieron obtener las credenciales.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleOpenDeleteDialog = (student: Student) => {
+    setStudentToDelete(student);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteStudent = () => {
+    if (!studentToDelete) return;
+
+    const deleted = mockService.deleteStudent(studentToDelete.id);
+    if (deleted) {
+      toast({
+        title: "Alumno eliminado",
+        description: `${studentToDelete.name} ha sido eliminado exitosamente`,
+      });
+
+      // Actualizar la lista local de estudiantes
+      setStudents(prevStudents => prevStudents.filter(s => s.id !== studentToDelete.id));
+      setIsDeleteDialogOpen(false);
+      setStudentToDelete(null); // Limpiar el estudiante seleccionado
+    } else {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el alumno",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const handleToggleStatus = (student: Student) => {
+    const updated = mockService.updateStudentStatus(student.id, !student.isActive);
+    if (updated) {
+      toast({
+        title: student.isActive ? "Cuenta desactivada" : "Cuenta activada",
+        description: `La cuenta de ${student.name} ha sido ${student.isActive ? 'desactivada' : 'activada'} exitosamente`,
+      });
+      
+      // Actualizar la lista local de estudiantes
+      setStudents(prevStudents => 
+        prevStudents.map(s => 
+          s.id === student.id 
+            ? { ...s, isActive: !s.isActive } 
+            : s
+        )
+      );
+    }
+  };
+  
   const filteredStudents = students.filter(student => 
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -141,6 +306,10 @@ const TeacherStudents = () => {
             className="w-full"
           />
         </div>
+        <Button onClick={handleOpenNewStudent} className="ml-4">
+          <UserPlus className="h-4 w-4 mr-2" />
+          Agregar Alumno
+        </Button>
       </div>
       
       <Card>
@@ -150,8 +319,10 @@ const TeacherStudents = () => {
               <TableRow>
                 <TableHead>Alumno</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Teléfono</TableHead>
                 <TableHead>Rutina</TableHead>
                 <TableHead>Estado de Pago</TableHead>
+                <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -160,7 +331,10 @@ const TeacherStudents = () => {
                 const routine = mockService.getRoutineById(student.routineId);
                 
                 return (
-                  <TableRow key={student.id}>
+                  <TableRow 
+                    key={student.id}
+                    className={!student.isActive ? "opacity-60" : ""}
+                  >
                     <TableCell>
                       <div className="flex items-center">
                         {student.profileImage ? (
@@ -178,6 +352,7 @@ const TeacherStudents = () => {
                       </div>
                     </TableCell>
                     <TableCell>{student.email}</TableCell>
+                    <TableCell>{student.phone}</TableCell>
                     <TableCell>{routine ? routine.name : 'Sin rutina'}</TableCell>
                     <TableCell>
                       {student.paymentStatus === 'paid' ? (
@@ -190,17 +365,22 @@ const TeacherStudents = () => {
                         </Badge>
                       )}
                     </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={student.isActive ? "outline" : "secondary"}
+                        className={student.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-100 text-gray-700"}
+                      >
+                        {student.isActive ? "Activo" : "Inactivo"}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Abrir menú</span>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => handleOpenProfile(student)}>
                             Ver perfil
                           </DropdownMenuItem>
@@ -212,6 +392,34 @@ const TeacherStudents = () => {
                               Marcar como pagado
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem onClick={() => handleToggleStatus(student)}>
+                            {student.isActive ? (
+                              <>
+                                <PowerOff className="mr-2 h-4 w-4" />
+                                Desactivar cuenta
+                              </>
+                            ) : (
+                              <>
+                                <Power className="mr-2 h-4 w-4" />
+                                Activar cuenta
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShowCredentials(student.id)}>
+                            <KeyRound className="mr-2 h-4 w-4" />
+                            Ver credenciales
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleRegenerateCredentials(student.id)}>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Regenerar credenciales
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleOpenDeleteDialog(student)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Eliminar alumno
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -225,7 +433,75 @@ const TeacherStudents = () => {
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
-          {dialogType === 'profile' && selectedStudent && (
+          {dialogType === 'new' ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Agregar Nuevo Alumno</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nombre completo</Label>
+                  <Input
+                    id="name"
+                    value={newStudent.name}
+                    onChange={(e) => setNewStudent(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Juan Pérez"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newStudent.email}
+                    onChange={(e) => setNewStudent(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="juan@ejemplo.com"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Número de celular</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={newStudent.phone}
+                    onChange={(e) => setNewStudent(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="+54 911 1234-5678"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="routine">Rutina inicial</Label>
+                  <Select
+                    value={newStudent.routineId}
+                    onValueChange={(value) => setNewStudent(prev => ({ ...prev, routineId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona una rutina" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {routines.map(routine => (
+                        <SelectItem key={routine.id} value={routine.id}>
+                          {routine.name} ({routine.level})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <DialogFooter className="mt-6">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreateStudent}>
+                  Agregar Alumno
+                </Button>
+              </DialogFooter>
+            </>
+          ) : dialogType === 'profile' && selectedStudent && (
             <>
               <DialogHeader>
                 <DialogTitle>Perfil de Alumno</DialogTitle>
@@ -342,6 +618,31 @@ const TeacherStudents = () => {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de confirmación para eliminar */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar eliminación</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar a {studentToDelete?.name}? Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteStudent}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Eliminar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Layout>

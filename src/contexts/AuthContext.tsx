@@ -1,6 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockService, User, Student, Teacher, UserRole } from '@/lib/mock-data';
+import { User } from '@/lib/mock-data';
+import { mockService } from '@/lib/mock-service';
 import { useToast } from '@/components/ui/use-toast';
 
 interface AuthContextType {
@@ -40,18 +40,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // In a real app, you'd validate credentials with your backend
-    // For this demo, we'll accept any email from our mock data and any password
     try {
+      console.log('Intentando iniciar sesión con:', email);
+      
       // Get all users from mockService
       const students = mockService.getStudentsByTeacherId('all');
-      const teachers = mockService.getAllTeachers ? mockService.getAllTeachers() : [];
+      console.log('Estudiantes encontrados:', students);
       
-      const foundUser = [...teachers, ...students]
-        .find(u => u.email.toLowerCase() === email.toLowerCase());
+      const teachers = mockService.getAllTeachers();
+      console.log('Profesores encontrados:', teachers);
+      
+      const allUsers = [...teachers, ...students];
+      console.log('Todos los usuarios:', allUsers);
+      
+      const foundUser = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+      console.log('Usuario encontrado:', foundUser);
       
       if (foundUser) {
         setUser(foundUser);
@@ -74,9 +77,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error('Login error:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+      
       toast({
         title: "Error de autenticación",
-        description: "Ocurrió un error durante el inicio de sesión",
+        description: `Error: ${error instanceof Error ? error.message : 'Error desconocido'}`,
         variant: "destructive",
       });
       
